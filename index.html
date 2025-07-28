@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor Benzeri - Yönlendiriliyor...</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .redirect-container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="redirect-container">
+        <div class="spinner"></div>
+        <h1>Cursor Benzeri</h1>
+        <p>Ana sayfaya yönlendiriliyorsunuz...</p>
+        <p>Otomatik yönlendirme çalışmazsa <a href="index.php" class="link">buraya tıklayın</a></p>
+    </div>
+    
+    <script>
+        // 2 saniye sonra index.php'ye yönlendir
+        setTimeout(function() {
+            window.location.href = 'index.php';
+        }, 2000);
+    </script>
+</body>
+</html> 

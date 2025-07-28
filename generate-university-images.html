@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ukrainian University Images Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .image-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .university-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 15px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .university-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: inherit;
+            z-index: -1;
+        }
+        
+        .police-uni {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        .medical-uni {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .karazin-uni {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .aviation-uni {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .finance-uni {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        .railway-uni {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        
+        .university-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .university-desc {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .instructions {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .instructions ul {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            margin: 10px;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🇺🇦 Ukrainian University Images</h1>
+        
+        <div class="images-grid">
+            <div class="image-card">
+                <div class="university-image police-uni">🏛️</div>
+                <div class="university-name">Kharkiv Police University</div>
+                <div class="university-desc">National University of Internal Affairs</div>
+            </div>
+            
+            <div class="image-card">
+                <div class="university-image medical-uni">⚕️</div>
+                <div class="university-name">Kharkiv Medical University</div>
+                <div class="university-desc">Medical and Pharmaceutical Sciences</div>
+            </div>
+            
+            <div class="image-card">
+                <div class="university-image karazin-uni">🎓</div>
+                <div class="university-name">Kharkiv Karazin University</div>
+                <div class="university-desc">Classical University Excellence</div>
+            </div>
+            
+            <div class="image-card">
+                <div class="university-image aviation-uni">✈️</div>
+                <div class="university-name">Kharkiv Aviation University</div>
+                <div class="university-desc">Aerospace Engineering & Technology</div>
+            </div>
+            
+            <div class="image-card">
+                <div class="university-image finance-uni">💰</div>
+                <div class="university-name">Ukraine Finance Academy</div>
+                <div class="university-desc">Financial & Legal Education</div>
+            </div>
+            
+            <div class="image-card">
+                <div class="university-image railway-uni">🚂</div>
+                <div class="university-name">Ukraine Railway Academy</div>
+                <div class="university-desc">Transport & Logistics Excellence</div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Instructions for Adding Real Images:</h3>
+            <ul>
+                <li><strong>Image Size:</strong> 120x120px minimum (recommended: 240x240px for high quality)</li>
+                <li><strong>Format:</strong> JPG or PNG with transparent background</li>
+                <li><strong>Content:</strong> University buildings, campuses, logos, or modern educational imagery</li>
+                <li><strong>Style:</strong> Modern, professional, and representative of each university's specialty</li>
+                <li><strong>File Names:</strong> Use the exact names shown in the placeholder files</li>
+                <li><strong>Location:</strong> Place images in the 'images' folder of your project</li>
+            </ul>
+            
+            <h3>🎨 Design Recommendations:</h3>
+            <ul>
+                <li>Use high-quality photos of university buildings or campuses</li>
+                <li>Include university logos with modern design</li>
+                <li>Consider specialty-specific imagery (medical equipment, aircraft, etc.)</li>
+                <li>Ensure good contrast and visibility at small sizes</li>
+                <li>Maintain consistent aspect ratios across all images</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 
