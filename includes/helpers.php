@@ -1,13 +1,29 @@
 <?php
 // Yardımcı fonksiyonlar
 
+// Ensure session exists for auth/CSRF helpers
+if (session_status() === PHP_SESSION_NONE) {
+    // Basic secure defaults (works without HTTPS too)
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $params = session_get_cookie_params();
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => $params['path'] ?? '/',
+        'domain' => $params['domain'] ?? '',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
 /**
  * Güvenli string temizleme
  */
 function clean_input($data) {
     $data = trim($data);
     $data = stripslashes($data);
-    $data = htmlspecialchars($data);
+    $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
     return $data;
 }
 
@@ -22,9 +38,10 @@ function is_valid_email($email) {
  * Şifre güvenliğini kontrol et
  */
 function is_strong_password($password) {
-    // En az 6 karakter, en az bir harf ve bir rakam
-    return strlen($password) >= 6 && 
-           preg_match('/[A-Za-z]/', $password) && 
+    // En az 8 karakter, en az bir büyük harf, bir küçük harf ve bir rakam
+    return strlen($password) >= 8 &&
+           preg_match('/[A-Z]/', $password) &&
+           preg_match('/[a-z]/', $password) &&
            preg_match('/[0-9]/', $password);
 }
 
@@ -51,6 +68,46 @@ function generate_csrf_token() {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
     return $_SESSION['csrf_token'];
+}
+
+/**
+ * HTML hidden input for CSRF token
+ */
+function csrf_input_field() {
+    $token = generate_csrf_token();
+    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">';
+}
+
+/**
+ * Verify CSRF token from POST body
+ */
+function require_valid_csrf_post() {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!verify_csrf_token($token)) {
+        http_response_code(403);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Prevent mail header injection (strip CRLF)
+ */
+function sanitize_email_header_value($value) {
+    $value = (string)$value;
+    return str_replace(["\r", "\n"], '', $value);
+}
+
+/**
+ * Best-effort client IP (for rate limiting / logging)
+ * Note: In production behind proxy, configure your web server to pass correct REMOTE_ADDR.
+ */
+function get_client_ip() {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    if (!is_string($ip)) {
+        return '';
+    }
+    return $ip;
 }
 
 /**

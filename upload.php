@@ -16,8 +16,18 @@ $error = '';
 
 // Fotoğraf yükleme işlemi
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photo'])) {
-    $upload_dir = 'uploads/images/';
-    $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!require_valid_csrf_post()) {
+        $error = $translations['csrf_invalid'] ?? 'Security check failed. Please refresh the page and try again.';
+    } else {
+    // Private storage (served via serve_upload.php)
+    $upload_dir = 'storage/uploads/images/';
+    // Validate by detected MIME (do not trust client-provided mime)
+    $allowed_mimes = [
+        'image/jpeg' => 'jpg',
+        'image/png'  => 'png',
+        'image/gif'  => 'gif',
+        'image/webp' => 'webp',
+    ];
     $max_size = 5 * 1024 * 1024; // 5MB
     
     // Upload klasörünü oluştur
@@ -29,7 +39,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photo'])) {
     $file_name = $file['name'];
     $file_size = $file['size'];
     $file_tmp = $file['tmp_name'];
-    $file_type = $file['type'];
+    $file_type = $file['type']; // informational only (client-provided)
+    
+    // Detect real mime type
+    $detected_mime = null;
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $detected_mime = finfo_file($finfo, $file_tmp);
+            finfo_close($finfo);
+        }
+    }
     
     // Hata kontrolü
     if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -49,14 +69,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photo'])) {
             default:
                 $error = 'Bilinmeyen hata oluştu.';
         }
-    } elseif (!in_array($file_type, $allowed_types)) {
+    } elseif ($detected_mime === null || !isset($allowed_mimes[$detected_mime])) {
         $error = 'Sadece JPG, PNG, GIF ve WEBP formatları kabul edilir.';
     } elseif ($file_size > $max_size) {
         $error = 'Dosya boyutu 5MB\'dan büyük olamaz.';
     } else {
+        // Extra image validation
+        if (@getimagesize($file_tmp) === false) {
+            $error = 'Geçersiz görüntü dosyası.';
+        } else {
         // Güvenli dosya adı oluştur
-        $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        $new_file_name = uniqid() . '_' . time() . '.' . $file_extension;
+        $file_extension = $allowed_mimes[$detected_mime];
+        $new_file_name = bin2hex(random_bytes(16)) . '.' . $file_extension;
         $upload_path = $upload_dir . $new_file_name;
         
         // Dosyayı yükle
@@ -64,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photo'])) {
             // Veritabanına kaydet
             $user_id = $_SESSION['user_id'];
             $original_name = $file_name;
+            // Store relative private path in DB; served via serve_upload.php?id=...
             $file_url = $upload_path;
             
             $stmt = $conn->prepare("INSERT INTO uploaded_files (user_id, original_name, file_name, file_url, file_size, file_type, upload_date) VALUES (?, ?, ?, ?, ?, ?, NOW())");
@@ -78,6 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photo'])) {
         } else {
             $error = 'Dosya yüklenirken hata oluştu.';
         }
+        }
+    }
     }
 }
 
@@ -384,6 +411,7 @@ include 'includes/header.php';
         <?php endif; ?>
         
         <form method="POST" enctype="multipart/form-data" id="uploadForm">
+            <?php echo csrf_input_field(); ?>
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📸</div>
                 <div class="upload-text"><?php echo $translations['upload_drag_drop'] ?? 'Fotoğrafı buraya sürükleyin veya tıklayın'; ?></div>
@@ -406,12 +434,12 @@ include 'includes/header.php';
                 <div class="file-grid">
                     <?php foreach ($uploaded_files as $file): ?>
                         <div class="file-card">
-                            <img src="<?php echo htmlspecialchars($file['file_url']); ?>" alt="<?php echo htmlspecialchars($file['original_name']); ?>" class="file-image">
+                            <img src="<?php echo 'serve_upload.php?id=' . (int)$file['id']; ?>" alt="<?php echo htmlspecialchars($file['original_name']); ?>" class="file-image">
                             <div class="file-name"><?php echo htmlspecialchars($file['original_name']); ?></div>
                             <div class="file-size"><?php echo format_file_size($file['file_size']); ?></div>
                             <div class="file-date"><?php echo date('d.m.Y H:i', strtotime($file['upload_date'])); ?></div>
                             <div class="file-actions">
-                                <button class="file-btn copy" onclick="copyFileUrl('<?php echo $file['file_url']; ?>')">
+                                <button class="file-btn copy" onclick="copyFileUrl('<?php echo 'serve_upload.php?id=' . (int)$file['id']; ?>')">
                                     <?php echo $translations['copy_url'] ?? 'URL Kopyala'; ?>
                                 </button>
                                 <button class="file-btn delete" onclick="deleteFile(<?php echo $file['id']; ?>)">
@@ -434,6 +462,7 @@ const uploadForm = document.getElementById('uploadForm');
 const progressBar = document.getElementById('progressBar');
 const progressFill = document.getElementById('progressFill');
 const uploadBtn = document.getElementById('uploadBtn');
+const csrfToken = <?php echo json_encode(generate_csrf_token()); ?>;
 
 uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -508,6 +537,7 @@ function deleteFile(fileId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
             },
             body: JSON.stringify({ file_id: fileId })
         })

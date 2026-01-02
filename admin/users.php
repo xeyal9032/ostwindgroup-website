@@ -14,12 +14,27 @@ if(!is_logged_in()) {
 
 // Admin yoxlaması
 $user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT username, email FROM users WHERE id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch();
+try {
+    $stmt = $conn->prepare("SELECT username, email, is_admin FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+} catch (PDOException $e) {
+    // Fallback if DB not migrated yet
+    error_log("Admin auth query failed: " . $e->getMessage());
+    $stmt = $conn->prepare("SELECT username, email FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+    $user['is_admin'] = 0;
+}
 
-// Admin yoxlaması - username admin və ya e-mail admin@ostwindgroup.com
-if($user['username'] !== 'admin' && $user['email'] !== 'admin@ostwindgroup.com') {
+// Admin yoxlaması - prefer role flag (is_admin)
+$is_admin = !empty($user['is_admin']);
+// Backward-compatible fallback if DB not migrated yet
+if (!$is_admin) {
+    $is_admin = ($user['username'] === 'admin' || $user['email'] === 'admin@ostwindgroup.com' || $user['email'] === 'admin@example.com');
+}
+
+if(!$is_admin) {
     header("Location: ../index.php");
     exit();
 }
@@ -29,6 +44,9 @@ $error = '';
 
 // İstifadəçi silmə əməliyyatı
 if(isset($_POST['delete_user'])) {
+    if (!require_valid_csrf_post()) {
+        $error = 'CSRF validation failed. Please refresh and try again.';
+    } else {
     $delete_id = (int)$_POST['delete_user'];
     
     if($delete_id != $user_id) { // Admin özünü silə bilməz
@@ -40,10 +58,12 @@ if(isset($_POST['delete_user'])) {
                 $error = "İstifadəçi silinərkən xəta baş verdi.";
             }
         } catch (Exception $e) {
-            $error = "Xəta: " . $e->getMessage();
+            error_log("Admin delete user error: " . $e->getMessage());
+            $error = "İstifadəçi silinərkən xəta baş verdi.";
         }
     } else {
         $error = "Admin özünü silə bilməz!";
+    }
     }
 }
 
@@ -231,11 +251,24 @@ include '../includes/header.php';
             </thead>
             <tbody id="usersTableBody">
                 <?php
-                $stmt = $conn->query("SELECT id, username, email, created_at FROM users ORDER BY created_at DESC");
-                $users = $stmt->fetchAll();
+                try {
+                    $stmt = $conn->query("SELECT id, username, email, is_admin, created_at FROM users ORDER BY created_at DESC");
+                    $users = $stmt->fetchAll();
+                } catch (PDOException $e) {
+                    // Fallback if DB not migrated yet
+                    error_log("Admin users list query failed: " . $e->getMessage());
+                    $stmt = $conn->query("SELECT id, username, email, created_at FROM users ORDER BY created_at DESC");
+                    $users = $stmt->fetchAll();
+                    // Normalize missing field
+                    foreach ($users as &$u) {
+                        $u['is_admin'] = 0;
+                    }
+                    unset($u);
+                }
                 
                 foreach ($users as $user_data):
-                    $isAdmin = ($user_data['username'] === 'admin' || $user_data['email'] === 'admin@ostwindgroup.com');
+                    // Prefer role flag if present; fallback to legacy identity check
+                    $isAdmin = (!empty($user_data['is_admin'])) || ($user_data['username'] === 'admin' || $user_data['email'] === 'admin@ostwindgroup.com' || $user_data['email'] === 'admin@example.com');
                 ?>
                 <tr>
                     <td><?php echo htmlspecialchars($user_data['id']); ?></td>
@@ -259,6 +292,7 @@ include '../includes/header.php';
                         <?php if (!$isAdmin): ?>
                             <a href="edit_user.php?id=<?php echo $user_data['id']; ?>" class="action-btn edit">✏️ Düzəlt</a>
                             <form method="POST" style="display: inline;" onsubmit="return confirm('Bu istifadəçini silmək istədiyinizə əminsiniz?')">
+                                <?php echo csrf_input_field(); ?>
                                 <input type="hidden" name="delete_user" value="<?php echo $user_data['id']; ?>">
                                 <button type="submit" class="action-btn delete">🗑️ Sil</button>
                             </form>

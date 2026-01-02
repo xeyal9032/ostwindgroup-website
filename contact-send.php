@@ -8,6 +8,9 @@ $translations = $language->getTranslations();
 
 // Form verilerini al ve temizle
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error_message = '<div class="alert alert-error">Təhlükəsizlik yoxlaması uğursuz oldu. Zəhmət olmasa səhifəni yeniləyin və yenidən cəhd edin.</div>';
+    } else {
     $name = clean_input($_POST['name'] ?? '');
     $email = clean_input($_POST['email'] ?? '');
     $phone = clean_input($_POST['phone'] ?? '');
@@ -22,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // E-posta ile mesaj gönder
         $to = 'info@ostwindgroup.com';
-        $email_subject = "Yeni Əlaqə Mesajı: $subject";
+        $email_subject = sanitize_email_header_value("Yeni Əlaqə Mesajı: $subject");
         
         $email_content = "
         <html>
@@ -61,8 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </html>
         ";
         
-        $headers = "From: $email\r\n";
-        $headers .= "Reply-To: $email\r\n";
+        $safe_email = sanitize_email_header_value($email);
+        $headers = "From: $safe_email\r\n";
+        $headers .= "Reply-To: $safe_email\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         
         // E-posta gönder
@@ -106,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p>Mesaj göndərilə bilmədi. Zəhmət olmasa daha sonra yenidən cəhd edin.</p>
             </div>';
         }
+    }
     }
 }
 
@@ -201,6 +206,7 @@ include 'includes/header.php';
                     ?>
                     
                     <form method="POST" action="contact-send.php">
+                        <?php echo csrf_input_field(); ?>
                         <div class="form-group">
                             <label for="name">Ad və Soyad *</label>
                             <input type="text" id="name" name="name" required value="<?php echo htmlspecialchars($name ?? ''); ?>">

@@ -15,6 +15,9 @@ $error = '';
 $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error = $translations['csrf_invalid'] ?? 'Security check failed. Please refresh the page and try again.';
+    } else {
     $username = clean_input($_POST['username'] ?? '');
     $email = clean_input($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -25,6 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = $translations['validation_required'] ?? 'This field is required.';
     } elseif (!is_valid_email($email)) {
         $error = $translations['validation_email'] ?? 'Please enter a valid email address.';
+    } elseif (strtolower($username) === 'admin') {
+        $error = $translations['validation_username_exists'] ?? 'This username is already taken.';
+    } elseif (in_array(strtolower($email), ['admin@ostwindgroup.com', 'admin@example.com'], true)) {
+        $error = $translations['validation_email_exists'] ?? 'This email address is already taken.';
     } elseif (!is_valid_username($username)) {
         $error = $translations['validation_min_length'] ?? 'Username must be at least 3 characters.';
     } elseif (!is_strong_password($password)) {
@@ -47,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Kullanıcıyı kaydet
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $conn->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+                    $stmt = $conn->prepare("INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, 0)");
                     $stmt->execute([$username, $email, $hashed_password]);
                     
                     $success = $translations['register_success'] ?? 'Registration successful! You can now login.';
@@ -56,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             $error = $translations['register_error'] ?? 'An error occurred during registration.';
         }
+    }
     }
 }
 
@@ -224,6 +232,7 @@ include 'includes/header.php';
     <?php endif; ?>
     
     <form method="POST" action="">
+        <?php echo csrf_input_field(); ?>
         <div class="form-row">
             <div class="form-group">
                 <label for="username">👤 İstifadəçi Adı</label>

@@ -23,6 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = json_decode(file_get_contents('php://input'), true);
 $file_id = $input['file_id'] ?? null;
 
+// CSRF token doğrulama (header veya body)
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+$csrf_token = $headers['X-CSRF-Token'] ?? $headers['x-csrf-token'] ?? ($input['csrf_token'] ?? null);
+if (!verify_csrf_token($csrf_token ?? '')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'CSRF validation failed']);
+    exit;
+}
+
 if (!$file_id) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'File ID is required']);
@@ -42,9 +51,13 @@ try {
         exit;
     }
     
-    // Dosyayı fiziksel olarak sil
-    if (file_exists($file['file_url'])) {
-        unlink($file['file_url']);
+    // Dosyayı fiziksel olarak sil (private storage or legacy path)
+    $disk_path = $file['file_url'];
+    if (strpos($disk_path, 'storage/') === 0 || strpos($disk_path, 'uploads/') === 0) {
+        $disk_path = __DIR__ . '/' . $disk_path;
+    }
+    if ($disk_path && file_exists($disk_path)) {
+        unlink($disk_path);
     }
     
     // Veritabanından sil
@@ -60,6 +73,7 @@ try {
     
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    error_log("delete_file.php error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Server error']);
 }
 ?> 

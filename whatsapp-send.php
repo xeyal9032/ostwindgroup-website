@@ -8,6 +8,9 @@ $translations = $language->getTranslations();
 
 // Form verilerini al ve temizle
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error_message = '<div class="alert alert-error">Təhlükəsizlik yoxlaması uğursuz oldu. Zəhmət olmasa səhifəni yeniləyin və yenidən cəhd edin.</div>';
+    } else {
     $name = clean_input($_POST['name'] ?? '');
     $email = clean_input($_POST['email'] ?? '');
     $phone = clean_input($_POST['phone'] ?? '');
@@ -51,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }, 3000);
         </script>";
+    }
     }
 }
 
@@ -146,6 +150,7 @@ include 'includes/header.php';
                     ?>
                     
                     <form method="POST" action="whatsapp-send.php">
+                        <?php echo csrf_input_field(); ?>
                         <div class="form-group">
                             <label for="name">Ad və Soyad *</label>
                             <input type="text" id="name" name="name" required value="<?php echo htmlspecialchars($name ?? ''); ?>">

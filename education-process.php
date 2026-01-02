@@ -8,6 +8,10 @@ $translations = $language->getTranslations();
 
 // Form verilerini al
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error_message = "❌ Təhlükəsizlik yoxlaması uğursuz oldu. Zəhmət olmasa səhifəni yeniləyin və yenidən cəhd edin.";
+        $success = false;
+    } else {
     $education_level = clean_input($_POST['education_level'] ?? '');
     $full_name = clean_input($_POST['full_name'] ?? '');
     $phone = clean_input($_POST['phone'] ?? '');
@@ -47,14 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $headers = "MIME-Version: 1.0" . "\r\n";
     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
     $headers .= "From: OstWindGroup <noreply@ostwindgroup.com>" . "\r\n";
-    $headers .= "Reply-To: $email" . "\r\n";
+    $headers .= "Reply-To: " . sanitize_email_header_value($email) . "\r\n";
     
     // E-mail göndər
     $email_sent = mail('info@ostwindgroup.com', $email_subject, $email_body, $headers);
     
-    // Telegram mesajı
-    $bot_token = 'YOUR_BOT_TOKEN'; // Bot token'ınızı buraya yazın
-    $chat_id = 'YOUR_CHAT_ID'; // Chat ID'nizi buraya yazın
+    // Telegram mesajı (optional; configure via env)
+    $bot_token = function_exists('ostwind_env') ? ostwind_env('TELEGRAM_BOT_TOKEN', '') : (getenv('TELEGRAM_BOT_TOKEN') ?: '');
+    $chat_id = function_exists('ostwind_env') ? ostwind_env('TELEGRAM_CHAT_ID', '') : (getenv('TELEGRAM_CHAT_ID') ?: '');
     
     $telegram_message = "
 🎓 <b>Yeni Təhsil Müraciəti</b>
@@ -79,17 +83,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'parse_mode' => 'HTML'
     ];
     
-    // Telegram mesajı göndər
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $telegram_url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $telegram_data);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
-    $telegram_response = curl_exec($ch);
-    $telegram_sent = curl_errno($ch) === 0;
-    curl_close($ch);
+    // Telegram mesajı göndər (only if configured)
+    $telegram_sent = false;
+    if (!empty($bot_token) && !empty($chat_id)) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $telegram_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $telegram_data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        
+        curl_exec($ch);
+        $telegram_sent = curl_errno($ch) === 0;
+        curl_close($ch);
+    }
     
     // Nəticəni yoxla
     $success = $email_sent || $telegram_sent;
@@ -98,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success_message = "✅ Müraciətiniz uğurla göndərildi! Tezliklə sizinlə əlaqə saxlayacağıq.";
     } else {
         $error_message = "❌ Müraciət göndərilərkən xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.";
+    }
     }
 }
 

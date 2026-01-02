@@ -96,6 +96,7 @@ include 'includes/header.php';
                     <?php echo $message; ?>
                     
                     <form method="POST" action="telegram-send.php">
+                        <?php echo csrf_input_field(); ?>
                         <div class="form-group">
                             <label for="name">Ad və Soyad *</label>
                             <input type="text" id="name" name="name" required>

@@ -2,18 +2,28 @@ from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 import mysql.connector
 import bcrypt
+import os
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = 'supersecretkey'  # Gelişmiş güvenlik için değiştirilmeli
 
-# MySQL bağlantı ayarları (kullanıcıdan alınan bilgiler)
+def _env(key: str, default=None):
+    return os.getenv(key, default)
+
+
+# Never hardcode secrets in source control
+app.secret_key = _env("FLASK_SECRET_KEY") or _env("SECRET_KEY") or "dev-insecure-change-me"
+if app.secret_key == "dev-insecure-change-me" and _env("APP_ENV", "local") not in ("local", "dev", "development"):
+    raise RuntimeError("FLASK_SECRET_KEY must be set in production")
+
+
+# MySQL config via environment variables
 DB_CONFIG = {
-    'host': 'gtorg.mysql.ukraine.com.ua',
-    'user': 'gtorg_xeyal',
-    'password': 'sE)4!2Jnf7',
-    'database': 'gtorg_xeyal',
-    'port': 3306
+    "host": _env("DB_HOST", "localhost"),
+    "user": _env("DB_USER", "root"),
+    "password": _env("DB_PASSWORD", ""),
+    "database": _env("DB_NAME", "gtorg_xeyal"),
+    "port": int(_env("DB_PORT", "3306")),
 }
 
 def get_db_connection():

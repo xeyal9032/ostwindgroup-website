@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+
+# uploads (runtime)
+uploads/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store

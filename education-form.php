@@ -98,6 +98,7 @@ include 'includes/header.php';
                 <p>Hansı təhsil səviyyəsini seçdiyinizi bilmək istəyirik</p>
                 
                 <form action="education-process.php" method="POST" class="education-form">
+                    <?php echo csrf_input_field(); ?>
                     <div class="form-group">
                         <label for="education_level">Təhsil Səviyyəsi *</label>
                         <select name="education_level" id="education_level" required>

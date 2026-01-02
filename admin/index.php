@@ -14,12 +14,27 @@ if(!is_logged_in()) {
 
 // Admin yoxlaması (username admin olan və ya admin@example.com e-mail olan)
 $user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT username, email FROM users WHERE id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch();
+try {
+    $stmt = $conn->prepare("SELECT username, email, is_admin FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+} catch (PDOException $e) {
+    // Fallback if DB not migrated yet
+    error_log("Admin auth query failed: " . $e->getMessage());
+    $stmt = $conn->prepare("SELECT username, email FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+    $user['is_admin'] = 0;
+}
 
-// Admin yoxlaması - username admin və ya e-mail admin@ostwindgroup.com
-if($user['username'] !== 'admin' && $user['email'] !== 'admin@ostwindgroup.com') {
+// Admin yoxlaması - prefer role flag (is_admin)
+$is_admin = !empty($user['is_admin']);
+// Backward-compatible fallback if DB not migrated yet
+if (!$is_admin) {
+    $is_admin = ($user['username'] === 'admin' || $user['email'] === 'admin@ostwindgroup.com' || $user['email'] === 'admin@example.com');
+}
+
+if(!$is_admin) {
     header("Location: ../index.php");
     exit();
 }
