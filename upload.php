@@ -19,7 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photo'])) {
     if (!require_valid_csrf_post()) {
         $error = $translations['csrf_invalid'] ?? 'Security check failed. Please refresh the page and try again.';
     } else {
-    $upload_dir = 'uploads/images/';
+    // Private storage (served via serve_upload.php)
+    $upload_dir = 'storage/uploads/images/';
     // Validate by detected MIME (do not trust client-provided mime)
     $allowed_mimes = [
         'image/jpeg' => 'jpg',
@@ -87,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photo'])) {
             // Veritabanına kaydet
             $user_id = $_SESSION['user_id'];
             $original_name = $file_name;
+            // Store relative private path in DB; served via serve_upload.php?id=...
             $file_url = $upload_path;
             
             $stmt = $conn->prepare("INSERT INTO uploaded_files (user_id, original_name, file_name, file_url, file_size, file_type, upload_date) VALUES (?, ?, ?, ?, ?, ?, NOW())");
@@ -432,12 +434,12 @@ include 'includes/header.php';
                 <div class="file-grid">
                     <?php foreach ($uploaded_files as $file): ?>
                         <div class="file-card">
-                            <img src="<?php echo htmlspecialchars($file['file_url']); ?>" alt="<?php echo htmlspecialchars($file['original_name']); ?>" class="file-image">
+                            <img src="<?php echo 'serve_upload.php?id=' . (int)$file['id']; ?>" alt="<?php echo htmlspecialchars($file['original_name']); ?>" class="file-image">
                             <div class="file-name"><?php echo htmlspecialchars($file['original_name']); ?></div>
                             <div class="file-size"><?php echo format_file_size($file['file_size']); ?></div>
                             <div class="file-date"><?php echo date('d.m.Y H:i', strtotime($file['upload_date'])); ?></div>
                             <div class="file-actions">
-                                <button class="file-btn copy" onclick="copyFileUrl('<?php echo $file['file_url']; ?>')">
+                                <button class="file-btn copy" onclick="copyFileUrl('<?php echo 'serve_upload.php?id=' . (int)$file['id']; ?>')">
                                     <?php echo $translations['copy_url'] ?? 'URL Kopyala'; ?>
                                 </button>
                                 <button class="file-btn delete" onclick="deleteFile(<?php echo $file['id']; ?>)">

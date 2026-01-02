@@ -130,7 +130,8 @@ $translations = $language->getTranslations();
 </footer>
 
 <!-- Tawk.to Integration -->
-<script type="text/javascript">
+<?php $csp_nonce = $GLOBALS['ostwind_csp_nonce'] ?? ''; ?>
+<script type="text/javascript" nonce="<?php echo htmlspecialchars($csp_nonce, ENT_QUOTES, 'UTF-8'); ?>">
 var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
 (function(){
 var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
@@ -149,7 +150,7 @@ s0.parentNode.insertBefore(s1,s0);
 <!-- Custom JavaScript -->
 <script src="script.js"></script>
 
-<script>
+<script nonce="<?php echo htmlspecialchars($csp_nonce, ENT_QUOTES, 'UTF-8'); ?>">
     // Initialize AOS
     AOS.init({
         duration: 800,

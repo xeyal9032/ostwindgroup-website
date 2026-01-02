@@ -51,9 +51,13 @@ try {
         exit;
     }
     
-    // Dosyayı fiziksel olarak sil
-    if (file_exists($file['file_url'])) {
-        unlink($file['file_url']);
+    // Dosyayı fiziksel olarak sil (private storage or legacy path)
+    $disk_path = $file['file_url'];
+    if (strpos($disk_path, 'storage/') === 0 || strpos($disk_path, 'uploads/') === 0) {
+        $disk_path = __DIR__ . '/' . $disk_path;
+    }
+    if ($disk_path && file_exists($disk_path)) {
+        unlink($disk_path);
     }
     
     // Veritabanından sil

@@ -6,6 +6,33 @@ $language = Language::getInstance();
 $current_lang = $language->getCurrentLang();
 $translations = $language->getTranslations();
 
+// Security headers + CSP (nonce-based)
+$csp_nonce = base64_encode(random_bytes(16));
+$GLOBALS['ostwind_csp_nonce'] = $csp_nonce;
+
+if (!headers_sent()) {
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+    if ($is_https) {
+        header('Strict-Transport-Security: max-age=15552000; includeSubDomains');
+    }
+
+    $csp = "default-src 'self'; "
+        . "base-uri 'self'; "
+        . "object-src 'none'; "
+        . "form-action 'self'; "
+        . "frame-ancestors 'self'; "
+        . "img-src 'self' data: https:; "
+        . "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+        . "script-src 'self' 'nonce-{$csp_nonce}' https://unpkg.com https://embed.tawk.to; "
+        . "connect-src 'self' https://embed.tawk.to https://*.tawk.to wss://*.tawk.to; "
+        . "frame-src 'self' https://www.google.com https://embed.tawk.to https://*.tawk.to;";
+    header('Content-Security-Policy: ' . $csp);
+}
+
 // Sayfa başlığı varsayılan değeri
 if (!isset($page_title)) {
     $page_title = $translations['site_title'] ?? 'OstWindGroup';
@@ -113,7 +140,7 @@ $theme_class = get_theme_class();
         <span id="theme-icon">🌙</span>
     </button>
 
-    <script>
+    <script nonce="<?php echo htmlspecialchars($csp_nonce, ENT_QUOTES, 'UTF-8'); ?>">
         // Theme toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🔍 Header.php - Tema toggle başlatılıyor...');
@@ -216,7 +243,7 @@ $theme_class = get_theme_class();
         </nav>
     </header>
 
-    <script>
+    <script nonce="<?php echo htmlspecialchars($csp_nonce, ENT_QUOTES, 'UTF-8'); ?>">
         // Language change function
         function changeLanguage(lang) {
             window.location.href = '?lang=' + lang;

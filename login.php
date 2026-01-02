@@ -24,6 +24,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = $translations['validation_required'] ?? 'This field is required.';
     } else {
         try {
+            // Brute-force protection (DB-backed if table exists)
+            $ip = get_client_ip();
+            $email_norm = strtolower(trim($email));
+            $max_attempts = 5;
+            $window_seconds = 15 * 60;
+            $lock_seconds = 15 * 60;
+
+            $rate_limit_supported = true;
+            try {
+                $check = $conn->prepare("SELECT id, attempt_count, first_attempt_at, locked_until FROM login_attempts WHERE ip = ? AND email = ? LIMIT 1");
+                $check->execute([$ip, $email_norm]);
+                $attempt_row = $check->fetch();
+            } catch (PDOException $e) {
+                // table doesn't exist yet
+                $rate_limit_supported = false;
+                $attempt_row = null;
+            }
+
+            $is_locked = false;
+            if ($rate_limit_supported && $attempt_row) {
+                $locked_until = $attempt_row['locked_until'] ? strtotime($attempt_row['locked_until']) : null;
+                if ($locked_until && $locked_until > time()) {
+                    $is_locked = true;
+                }
+            }
+
+            if ($is_locked) {
+                $error = $translations['login_error'] ?? 'Invalid email or password';
+            } else {
+
             $stmt = $conn->prepare("SELECT id, username, email, password FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
@@ -34,9 +64,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['email'] = $user['email'];
+
+                // Clear login attempts on success
+                if ($rate_limit_supported) {
+                    try {
+                        $del = $conn->prepare("DELETE FROM login_attempts WHERE ip = ? AND email = ?");
+                        $del->execute([$ip, $email_norm]);
+                    } catch (PDOException $e) {
+                        // ignore
+                    }
+                }
                 redirect_to_home();
             } else {
                 $error = $translations['login_error'] ?? 'Invalid email or password';
+
+                // Record failed attempt
+                if ($rate_limit_supported) {
+                    try {
+                        if ($attempt_row) {
+                            $first_ts = strtotime($attempt_row['first_attempt_at']);
+                            $attempts = (int)$attempt_row['attempt_count'];
+                            $now = time();
+                            if ($first_ts === false || ($now - $first_ts) > $window_seconds) {
+                                // reset window
+                                $attempts = 1;
+                                $first_at = date('Y-m-d H:i:s');
+                            } else {
+                                $attempts += 1;
+                                $first_at = $attempt_row['first_attempt_at'];
+                            }
+
+                            $locked_until = null;
+                            if ($attempts >= $max_attempts) {
+                                $locked_until = date('Y-m-d H:i:s', time() + $lock_seconds);
+                            }
+
+                            $upd = $conn->prepare("UPDATE login_attempts SET attempt_count = ?, first_attempt_at = ?, last_attempt_at = NOW(), locked_until = ? WHERE id = ?");
+                            $upd->execute([$attempts, $first_at, $locked_until, $attempt_row['id']]);
+                        } else {
+                            $locked_until = null;
+                            if (1 >= $max_attempts) {
+                                $locked_until = date('Y-m-d H:i:s', time() + $lock_seconds);
+                            }
+                            $ins = $conn->prepare("INSERT INTO login_attempts (ip, email, attempt_count, first_attempt_at, last_attempt_at, locked_until) VALUES (?, ?, 1, NOW(), NOW(), ?)");
+                            $ins->execute([$ip, $email_norm, $locked_until]);
+                        }
+                    } catch (PDOException $e) {
+                        // ignore
+                    }
+                }
+            }
             }
         } catch (PDOException $e) {
             $error = $translations['login_error'] ?? 'Invalid email or password';

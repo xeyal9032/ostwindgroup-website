@@ -99,6 +99,18 @@ function sanitize_email_header_value($value) {
 }
 
 /**
+ * Best-effort client IP (for rate limiting / logging)
+ * Note: In production behind proxy, configure your web server to pass correct REMOTE_ADDR.
+ */
+function get_client_ip() {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    if (!is_string($ip)) {
+        return '';
+    }
+    return $ip;
+}
+
+/**
  * CSRF token doğrula
  */
 function verify_csrf_token($token) {
