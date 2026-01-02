@@ -7,11 +7,18 @@ $language = Language::getInstance();
 $translations = $language->getTranslations();
 
 // Telegram Bot API ayarları
-$bot_token = 'YOUR_BOT_TOKEN'; // Telegram bot token'ınızı buraya yazın
-$chat_id = 'YOUR_CHAT_ID'; // Telegram chat ID'nizi buraya yazın
+$bot_token = function_exists('ostwind_env') ? ostwind_env('TELEGRAM_BOT_TOKEN', '') : (getenv('TELEGRAM_BOT_TOKEN') ?: '');
+$chat_id = function_exists('ostwind_env') ? ostwind_env('TELEGRAM_CHAT_ID', '') : (getenv('TELEGRAM_CHAT_ID') ?: '');
 
 // Telegram'a mesaj gönderme fonksiyonu
 function sendTelegramMessage($bot_token, $chat_id, $message) {
+    if (empty($bot_token) || empty($chat_id)) {
+        return [
+            'success' => false,
+            'response' => 'Telegram is not configured (missing TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)',
+            'http_code' => 0
+        ];
+    }
     $url = "https://api.telegram.org/bot{$bot_token}/sendMessage";
     
     $data = [
@@ -39,6 +46,9 @@ function sendTelegramMessage($bot_token, $chat_id, $message) {
 
 // Form verilerini al ve temizle
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error_message = '<div class="alert alert-error">Təhlükəsizlik yoxlaması uğursuz oldu. Zəhmət olmasa səhifəni yeniləyin və yenidən cəhd edin.</div>';
+    } else {
     $name = clean_input($_POST['name'] ?? '');
     $email = clean_input($_POST['email'] ?? '');
     $phone = clean_input($_POST['phone'] ?? '');
@@ -53,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // E-posta ile mesaj gönder
         $to = 'info@ostwindgroup.com';
-        $email_subject = "Yeni Əlaqə Mesajı: $subject";
+        $email_subject = sanitize_email_header_value("Yeni Əlaqə Mesajı: $subject");
         
         $email_content = "
         <html>
@@ -92,8 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </html>
         ";
         
-        $headers = "From: $email\r\n";
-        $headers .= "Reply-To: $email\r\n";
+        $safe_email = sanitize_email_header_value($email);
+        $headers = "From: $safe_email\r\n";
+        $headers .= "Reply-To: $safe_email\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         
         // E-posta gönder
@@ -130,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p>Mesaj göndərilə bilmədi. Zəhmət olmasa daha sonra yenidən cəhd edin.</p>
             </div>';
         }
+    }
     }
 }
 

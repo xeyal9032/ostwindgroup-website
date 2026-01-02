@@ -14,6 +14,9 @@ if (is_logged_in()) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error = $translations['csrf_invalid'] ?? 'Security check failed. Please refresh the page and try again.';
+    } else {
     $email = clean_input($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     
@@ -26,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
             
             if ($user && password_verify($password, $user['password'])) {
+                // Prevent session fixation
+                session_regenerate_id(true);
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['email'] = $user['email'];
@@ -36,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             $error = $translations['login_error'] ?? 'Invalid email or password';
         }
+    }
     }
 }
 
@@ -148,6 +154,7 @@ include 'includes/header.php';
     <?php endif; ?>
     
     <form method="POST" action="">
+        <?php echo csrf_input_field(); ?>
         <div class="form-group">
             <label for="email">📧 E-mail</label>
             <input type="email" id="email" name="email" placeholder="E-mail ünvanınızı daxil edin" required value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">

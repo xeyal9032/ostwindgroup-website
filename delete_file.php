@@ -23,6 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = json_decode(file_get_contents('php://input'), true);
 $file_id = $input['file_id'] ?? null;
 
+// CSRF token doğrulama (header veya body)
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+$csrf_token = $headers['X-CSRF-Token'] ?? $headers['x-csrf-token'] ?? ($input['csrf_token'] ?? null);
+if (!verify_csrf_token($csrf_token ?? '')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'CSRF validation failed']);
+    exit;
+}
+
 if (!$file_id) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'File ID is required']);
@@ -60,6 +69,7 @@ try {
     
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    error_log("delete_file.php error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Server error']);
 }
 ?> 

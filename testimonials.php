@@ -288,6 +288,7 @@ include 'includes/header.php';
                 <p class="section-subtitle"><?php echo $lang->get('help_others_choose'); ?></p>
                 
                 <form class="review-form" method="POST" action="">
+                    <?php echo csrf_input_field(); ?>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="review_name"><?php echo $lang->get('full_name'); ?></label>

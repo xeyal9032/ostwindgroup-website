@@ -16,7 +16,7 @@ $success = '';
 $error = '';
 
 // Kullanıcı bilgilerini al
-$stmt = $conn->prepare("SELECT username, email, created_at FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT username, email, is_admin, created_at FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
@@ -26,18 +26,27 @@ if (!$user) {
 
 // Profil güncelleme işlemi
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (!require_valid_csrf_post()) {
+        $error = $translations['csrf_invalid'] ?? 'Security check failed. Please refresh the page and try again.';
+    } else {
     $new_username = clean_input($_POST['username']);
     $new_email = clean_input($_POST['email']);
     $current_password = $_POST['current_password'];
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
     
+    $current_is_admin = !empty($user['is_admin']);
+
     if(empty($new_username) || empty($new_email)) {
         $error = $translations['profile_username_email_required'] ?? 'İstifadəçi adı və e-poçt məcburidir.';
     } elseif(!is_valid_email($new_email)) {
         $error = $translations['profile_invalid_email'] ?? 'Düzgün e-poçt ünvanı daxil edin.';
     } elseif(!is_valid_username($new_username)) {
         $error = $translations['profile_invalid_username'] ?? 'Düzgün istifadəçi adı daxil edin.';
+    } elseif(!$current_is_admin && strtolower($new_username) === 'admin') {
+        $error = $translations['profile_username_exists'] ?? 'Bu istifadəçi adı artıq mövcuddur.';
+    } elseif(!$current_is_admin && in_array(strtolower($new_email), ['admin@ostwindgroup.com', 'admin@example.com'], true)) {
+        $error = $translations['profile_email_exists'] ?? 'Bu e-poçt ünvanı artıq mövcuddur.';
     } else {
         // Kullanıcı adının başka biri tarafından kullanılıp kullanılmadığını kontrol et
         $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
@@ -95,6 +104,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
             }
         }
+    }
     }
 }
 
@@ -172,6 +182,7 @@ include 'includes/header.php';
             </div>
             
             <form method="POST" action="" class="profile-form">
+                <?php echo csrf_input_field(); ?>
                 <div class="profile-section">
                     <div class="section-header">
                         <h3>✏️ Profil Məlumatlarını Yenilə</h3>

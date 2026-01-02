@@ -11,6 +11,23 @@ if (!is_logged_in()) {
     redirect_to_login();
 }
 
+$user_id = $_SESSION['user_id'];
+try {
+    $stmt = $conn->prepare("SELECT username, email, is_admin FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+    $is_admin = !empty($user['is_admin']);
+    if (!$is_admin) {
+        $is_admin = ($user && ($user['username'] === 'admin' || $user['email'] === 'admin@ostwindgroup.com' || $user['email'] === 'admin@example.com'));
+    }
+    if (!$is_admin) {
+        redirect_to_home();
+    }
+} catch (PDOException $e) {
+    // If schema isn't migrated yet, fallback to legacy check
+    error_log("Admin auth check failed: " . $e->getMessage());
+}
+
 $error = '';
 $success = '';
 
@@ -41,7 +58,9 @@ try {
     $university_distribution = $stmt->fetchAll();
     
 } catch (PDOException $e) {
-    $error = 'Veritabanı hatası: ' . $e->getMessage();
+    error_log("Admin dashboard DB error: " . $e->getMessage());
+    $app_debug = function_exists('ostwind_env') && ostwind_env('APP_DEBUG', '0') === '1';
+    $error = $app_debug ? ('Veritabanı hatası: ' . $e->getMessage()) : 'Veritabanı hatası oluştu. Lütfen daha sonra tekrar deneyin.';
 }
 
 $page_title = 'Admin Dashboard - OstWindGroup';

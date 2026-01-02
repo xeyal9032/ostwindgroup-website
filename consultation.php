@@ -16,6 +16,9 @@ $success_message = '';
 $error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error_message = 'Təhlükəsizlik yoxlaması uğursuz oldu. Zəhmət olmasa səhifəni yeniləyin və yenidən cəhd edin.';
+    } else {
     $name = clean_input($_POST['name'] ?? '');
     $email = clean_input($_POST['email'] ?? '');
     $phone = clean_input($_POST['phone'] ?? '');
@@ -31,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Send email (you can customize this part)
         $to = 'info@ostwindgroup.az';
-        $subject = 'Yeni Konsultasiya Müraciəti - ' . $name;
+        $subject = sanitize_email_header_value('Yeni Konsultasiya Müraciəti - ' . $name);
         $email_content = "
         Yeni konsultasiya müraciəti:
         
@@ -43,8 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Mesaj: $message
         ";
         
-        $headers = 'From: ' . $email . "\r\n" .
-                   'Reply-To: ' . $email . "\r\n" .
+        $safe_email = sanitize_email_header_value($email);
+        $headers = 'From: ' . $safe_email . "\r\n" .
+                   'Reply-To: ' . $safe_email . "\r\n" .
                    'X-Mailer: PHP/' . phpversion();
         
         if (mail($to, $subject, $email_content, $headers)) {
@@ -52,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error_message = 'Müraciət göndərilərkən xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.';
         }
+    }
     }
 }
 ?>
@@ -127,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     
                     <form method="POST" class="consultation-form">
+                        <?php echo csrf_input_field(); ?>
                         <div class="form-group">
                             <label for="name">Ad və Soyad *</label>
                             <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>" required>

@@ -15,6 +15,9 @@ $error = '';
 $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!require_valid_csrf_post()) {
+        $error = $translations['csrf_invalid'] ?? 'Security check failed. Please refresh the page and try again.';
+    } else {
     $student_number = clean_input($_POST['student_number'] ?? '');
     $first_name = clean_input($_POST['first_name'] ?? '');
     $last_name = clean_input($_POST['last_name'] ?? '');
@@ -66,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = $translations['student_register_error'] ?? 'Qeydiyyat zamanı xəta baş verdi.';
         }
     }
+    }
 }
 
 $page_title = $translations['student_register_title'] ?? 'Tələbə Qeydiyyatı';
@@ -85,6 +89,7 @@ include 'includes/header.php';
         <?php endif; ?>
         
         <form method="POST" action="">
+            <?php echo csrf_input_field(); ?>
             <div class="form-row">
                 <div class="form-group" data-aos="fade-up" data-aos-duration="800" data-aos-delay="200">
                     <label for="student_number"><?php echo $translations['student_number'] ?? 'Tələbə Nömrəsi'; ?> *</label>
